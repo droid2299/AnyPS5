@@ -280,7 +280,9 @@ GuestImage GuestImageReader::Read(const std::filesystem::path& path, std::vector
                 mapped(addend, 0, 0);
             } else if (relocation == 1 || relocation == 6 || relocation == 7) {
                 const auto& symbol = image.Symbols[info >> 32];
-                if ((info >> 32) == 0 || (symbol.Info & 15) == 6 || (relocation != 1 && addend != 0) || (symbol.Section == 0 && symbol.Name.empty())) fail("Invalid guest symbol relocation");
+                const bool null = symbol.Name.empty() && symbol.Info == 0 && symbol.Visibility == 0 && symbol.Section == 0
+                    && symbol.Value == 0 && symbol.Size == 0;
+                if ((info >> 32) == 0 || (symbol.Info & 15) == 6 || (relocation != 1 && addend != 0) || (symbol.Section == 0 && symbol.Name.empty() && !null)) fail("Invalid guest symbol relocation");
             } else {
                 const auto& symbol = image.Symbols[info >> 32];
                 if (((info >> 32) == 0 && tls == nullptr) || ((info >> 32) != 0 && (symbol.Info & 15) != 6) || (relocation == 16 && addend != 0)) fail("Invalid guest TLS relocation");

@@ -37,13 +37,16 @@ PeRelocations WindowsRelocationBuilder::Apply(WindowsLoadImage& image, const Dom
             const auto symbolOffset = static_cast<std::size_t>(symbol) * 24;
             if (Io::ReadU16(dynamicSection.DynSymData, symbolOffset + 6) != 0)
                 throw Domain::RelinkerException("Defined symbols require explicit relocation support", target);
-            const auto name = ReadString(dynamicSection.DynStrData, Io::ReadU32(dynamicSection.DynSymData, symbolOffset));
-            if (name.empty())
-                throw Domain::RelinkerException("Empty import symbol name", target);
             if (type != 1 && addend != 0)
                 throw Domain::RelinkerException("GLOB_DAT/JUMP_SLOT relocation has a nonzero addend", target);
             image.RequireWritable(target, 8);
             image.WritePointer(target, 0);
+            const auto name = ReadString(dynamicSection.DynStrData, Io::ReadU32(dynamicSection.DynSymData, symbolOffset));
+            if (name.empty()) {
+                if (type == 1)
+                    throw Domain::RelinkerException("Empty import symbol name", target);
+                continue;
+            }
             result.Imports.push_back({name, rva, addend});
             if (const auto module = dynamicSection.ImportModules.find(target); module != dynamicSection.ImportModules.end())
                 result.Imports.back().Library = module->second;

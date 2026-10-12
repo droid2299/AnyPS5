@@ -24,7 +24,7 @@ DT_OS_PLTRELSZ = 0x6100002D
 DT_OS_SYMTABSZ = 0x6100003F
 
 
-def fixture(jmprel=0x700, pltrelsz=24, os_tags=True, target=0x300):
+def fixture(jmprel=0x700, pltrelsz=24, os_tags=True, target=0x300, null_import=False):
     image = bytearray(0x1000)
     image[:16] = b"\x7fELF\x02\x01\x01" + bytes(9)
     struct.pack_into("<HHIQQQIHHHHHH", image, 16,
@@ -55,7 +55,8 @@ def fixture(jmprel=0x700, pltrelsz=24, os_tags=True, target=0x300):
     for index, tag in enumerate(tags):
         struct.pack_into("<qQ", image, 0x400 + index * 16, *tag)
     struct.pack_into("<QQq", image, 0x700, target, (1 << 32) | 7, 0)
-    struct.pack_into("<I", image, 0x620 + 24, 8)
+    if not null_import:
+        struct.pack_into("<I", image, 0x620 + 24, 8)
     image[0x600:0x610] = b"\x00lib.so\x00symbol\x00\x00"[:16]
     return image
 
@@ -80,6 +81,7 @@ def main():
         work = Path(directory)
         run(relinker, work, "os-valid", fixture())
         run(relinker, work, "sysv-valid", fixture(os_tags=False))
+        run(relinker, work, "null-import", fixture(null_import=True))
         run(relinker, work, "empty-table", fixture(pltrelsz=0))
         run(relinker, work, "offset-max-empty-table",
             fixture(jmprel=0xFFFFFFFFFFFFFFFF, pltrelsz=0), error)
